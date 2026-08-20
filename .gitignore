@@ -1,0 +1,24 @@
+# Python environments and caches
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Test and coverage output
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Generated distributions and PyInstaller output
+build/
+dist/
+*.spec
+*.pdf
+
+# Local editor and operating-system metadata
+.DS_Store
+.idea/
+.vscode/
+
+# Internal planning records
+docs/

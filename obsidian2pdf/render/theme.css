@@ -1,0 +1,64 @@
+@page {
+  size: __PAGE_SIZE__;
+  margin: 8mm 7mm;
+  @bottom-center { content: counter(page); font-size: 7pt; color: #888; }
+}
+
+body {
+  font-family: "DejaVu Sans", sans-serif;
+  font-size: __BASE_FONT__;
+  line-height: 1.45;
+  color: #111;
+}
+
+h1, h2, h3, h4, h5, h6 { line-height: 1.25; page-break-after: avoid; }
+h1 { font-size: 1.7em; border-bottom: 1px solid #999; padding-bottom: 0.15em; }
+h2 { font-size: 1.45em; }
+h3 { font-size: 1.25em; }
+h4 { font-size: 1.1em; }
+h5, h6 { font-size: 1em; }
+h1 { bookmark-level: 1; } h2 { bookmark-level: 2; } h3 { bookmark-level: 3; }
+h4 { bookmark-level: 4; } h5 { bookmark-level: 5; } h6 { bookmark-level: 6; }
+
+img { max-width: 100%; }
+
+pre, code { font-family: "DejaVu Sans Mono", monospace; font-size: 0.85em; }
+.codehilite { background: #f6f6f6; border-radius: 3px; padding: 0.4em 0.5em; }
+.codehilite pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+code { background: #f0f0f0; padding: 0 0.15em; }
+.codehilite code { background: transparent; padding: 0; }
+
+blockquote {
+  border-left: 3px solid #bbb;
+  margin-left: 0;
+  padding-left: 0.8em;
+  color: #444;
+}
+
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid #999; padding: 0.25em 0.45em; }
+
+.wikilink { color: #345; font-weight: 600; }
+.embed-ref { color: #345; font-style: italic; }
+.video-link { color: #069; }
+.missing-embed {
+  border: 1px dashed #c66;
+  color: #c66;
+  padding: 0.3em;
+  font-size: 0.85em;
+}
+
+.cover { page-break-after: always; text-align: center; padding-top: 35%; }
+.cover-title {
+  font-size: 4.2em;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+}
+.cover-subtitle {
+  margin-top: 0.6em;
+  font-size: 2em;
+  font-style: italic;
+  color: #555;
+}
+.cover-date { margin-top: 1.5em; font-size: 1.6em; color: #666; }

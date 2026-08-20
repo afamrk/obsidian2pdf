@@ -1,0 +1,41 @@
+[project]
+name = "obsidian2pdf"
+version = "0.1.0"
+description = "Export Obsidian notes and folders to e-reader-ready PDFs"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "afamrk" }]
+keywords = ["obsidian", "pdf", "epub", "kobo", "markdown"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "markdown>=3.5",
+    "weasyprint>=60",
+    "pygments>=2.17",
+    "curl_cffi>=0.7",
+    "ebooklib>=0.19",
+    "Pillow>=10.1",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8.0", "pypdf>=4.0"]
+
+[project.scripts]
+obsidian2pdf = "obsidian2pdf.cli:main"
+
+[build-system]
+requires = ["setuptools>=77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["obsidian2pdf*"]
+
+[tool.setuptools.package-data]
+"obsidian2pdf.render" = ["*.css"]
