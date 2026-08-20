@@ -1,0 +1,103 @@
+name: Release
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to release (optional)
+        required: false
+        type: string
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: checkout repo
+        uses: actions/checkout@v4
+
+      - name: uv setup
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+          prune-cache: true
+
+      - name: Install Task
+        uses: go-task/setup-task@v2
+
+      - name: setup
+        run: task setup
+
+      - name: test
+        run: task test
+        env:
+          UV_NO_SYNC: "1"
+
+      - name: build distributions
+        run: task build
+
+      - name: package executables
+        run: |
+          task package
+          task package:onefile
+
+      - name: upload Python distributions for PyPI
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-distributions
+          path: |
+            dist/*.tar.gz
+            dist/*.whl
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: upload release artifacts
+        if: github.event_name == 'workflow_dispatch' && inputs.tag == ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: obsidian2pdf-${{ github.ref_name }}
+          path: |
+            dist/*.tar.gz
+            dist/*.whl
+            dist/onedir/obsidian2pdf/**
+            dist/onefile/obsidian2pdf
+          if-no-files-found: error
+
+      - name: create GitHub release
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.tag != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          generate_release_notes: true
+          files: |
+            dist/*.tar.gz
+            dist/*.whl
+            dist/onedir/obsidian2pdf/**
+            dist/onefile/obsidian2pdf
+
+  pypi-publish:
+    name: Publish to PyPI
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: release
+    runs-on: ubuntu-24.04
+    environment:
+      name: pypi
+      url: https://pypi.org/p/obsidian2pdf
+    permissions:
+      id-token: write
+    steps:
+      - name: download Python distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: python-distributions
+          path: dist
+
+      - name: publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

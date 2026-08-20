@@ -1,0 +1,45 @@
+version: "3"
+
+tasks:
+  workflow:
+    desc: run workflow local
+    cmd: act workflow_dispatch --container-architecture linux/amd64 -P ubuntu-24.04=catthehacker/ubuntu:act-24.04 -W .github/workflows/release.yaml
+  setup:
+    desc: Install the application and test dependencies
+    cmds:
+      - uv sync --locked --extra test
+
+  test:
+    desc: Run the complete test suite
+    cmds:
+      - uv run --extra test pytest tests/ -v
+
+  build:
+    desc: Build wheel and source distribution archives
+    cmds:
+      - uv build
+
+  package:
+    desc: Build a directory-based executable bundle
+    cmds:
+      - >-
+        uv run --with pyinstaller pyinstaller
+        --name obsidian2pdf --onedir --clean --distpath dist/onedir
+        --paths .
+        --collect-all obsidian2pdf --collect-all weasyprint
+        .venv/bin/obsidian2pdf
+
+  package:onefile:
+    desc: Build a single-file executable
+    cmds:
+      - >-
+        uv run --with pyinstaller pyinstaller
+        --name obsidian2pdf --onefile --clean --distpath dist/onefile
+        --paths .
+        --collect-all obsidian2pdf --collect-all weasyprint
+        .venv/bin/obsidian2pdf
+
+  clean:
+    desc: Remove generated package artifacts
+    cmds:
+      - rm -rf build dist/onedir dist/onefile obsidian2pdf.spec
