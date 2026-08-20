@@ -48,6 +48,11 @@ jobs:
           task package
           task package:onefile
 
+      - name: prepare release files
+        run: |
+          tar -C dist/onedir -czf dist/obsidian2pdf-linux-x86_64-bundle.tar.gz obsidian2pdf
+          mv dist/onefile/obsidian2pdf dist/obsidian2pdf-linux-x86_64
+
       - name: upload Python distributions for PyPI
         uses: actions/upload-artifact@v4
         with:
@@ -66,8 +71,7 @@ jobs:
           path: |
             dist/*.tar.gz
             dist/*.whl
-            dist/onedir/obsidian2pdf/**
-            dist/onefile/obsidian2pdf
+            dist/obsidian2pdf-linux-x86_64
           if-no-files-found: error
 
       - name: create GitHub release
@@ -79,8 +83,7 @@ jobs:
           files: |
             dist/*.tar.gz
             dist/*.whl
-            dist/onedir/obsidian2pdf/**
-            dist/onefile/obsidian2pdf
+            dist/obsidian2pdf-linux-x86_64
 
   pypi-publish:
     name: Publish to PyPI
