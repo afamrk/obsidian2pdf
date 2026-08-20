@@ -48,11 +48,6 @@ jobs:
           task package
           task package:onefile
 
-      - name: prepare release files
-        run: |
-          tar -C dist/onedir -czf dist/obsidian2pdf-linux-x86_64-bundle.tar.gz obsidian2pdf
-          mv dist/onefile/obsidian2pdf dist/obsidian2pdf-linux-x86_64
-
       - name: upload Python distributions for PyPI
         uses: actions/upload-artifact@v4
         with:
@@ -62,6 +57,11 @@ jobs:
             dist/*.whl
           retention-days: 1
           if-no-files-found: error
+
+      - name: prepare release files
+        run: |
+          tar -C dist/onedir -czf dist/obsidian2pdf-linux-x86_64-bundle.tar.gz obsidian2pdf
+          mv dist/onefile/obsidian2pdf dist/obsidian2pdf-linux-x86_64
 
       - name: upload release artifacts
         if: github.event_name == 'workflow_dispatch' && inputs.tag == ''
