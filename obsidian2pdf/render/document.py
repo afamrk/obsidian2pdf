@@ -1,28 +1,80 @@
 """Walk the document tree and emit one HTML document."""
 from __future__ import annotations
 
+import functools
 import html as html_mod
 import re
 from pathlib import Path
 from typing import Callable
 
-import markdown
+import pygments
+from markdown_it import MarkdownIt
 from pygments.formatters import HtmlFormatter
+from pygments.lexers import get_lexer_by_name
+from pygments.util import ClassNotFound
 
 from ..collector.tree import NoteNode, SectionNode
 from ..pagespec import PageSpec
 from ..preprocess.pipeline import Pipeline
 from ..preprocess.transforms import NoteContext
 
-_MD_EXTENSIONS = ["fenced_code", "codehilite", "tables", "sane_lists"]
 _THEME = Path(__file__).with_name("theme.css")
 
 
+def _fence_renderer(highlight: bool) -> Callable[..., str]:
+    """Every code block — fenced or indented, highlighted or not — renders
+    as <pre class="codehilite"><code>, so one CSS rule covers them all."""
+
+    def render_code(_renderer, tokens, idx, options, env) -> str:
+        token = tokens[idx]
+        lang = token.info.split()[0] if token.info.strip() else ""
+        body = None
+        if highlight and lang:
+            try:
+                lexer = get_lexer_by_name(lang)
+            except ClassNotFound:
+                pass  # unknown language: fall back to plain escaped text
+            else:
+                body = pygments.highlight(
+                    token.content, lexer, HtmlFormatter(nowrap=True)
+                )
+        if body is None:
+            body = html_mod.escape(token.content)
+        return f'<pre class="codehilite"><code>{body}</code></pre>\n'
+
+    return render_code
+
+
+@functools.lru_cache(maxsize=None)
+def _parser(highlight: bool) -> MarkdownIt:
+    """CommonMark, matching what Obsidian itself parses: a list or a table
+    may interrupt a paragraph, and list nesting follows relative indent
+    (Obsidian indents by two spaces; classic Markdown demands four).
+
+    breaks=True mirrors Obsidian's default with Strict line breaks off — a
+    single newline is a line break. html=True lets the preprocess
+    transforms emit the raw HTML spans they build for wikilinks and embeds.
+    """
+    md = MarkdownIt("commonmark", {"breaks": True, "html": True})
+    md.enable(["table", "strikethrough"])
+    # The preprocess transforms resolve local images to file:// URIs, a
+    # scheme markdown-it rejects as unsafe by default — which would drop
+    # every embedded image. This document is rendered offline into a
+    # PDF/EPUB, not served, so the scheme is allowed back in.
+    default_validate = md.validateLink
+
+    def validate_link(url: str) -> bool:
+        return url.strip().lower().startswith("file:") or default_validate(url)
+
+    md.validateLink = validate_link
+    rule = _fence_renderer(highlight)
+    md.add_render_rule("fence", rule)
+    md.add_render_rule("code_block", rule)
+    return md
+
+
 def _markdown_to_html(text: str, highlight: bool) -> str:
-    configs = {"codehilite": {"guess_lang": False, "use_pygments": highlight}}
-    return markdown.markdown(
-        text, extensions=_MD_EXTENSIONS, extension_configs=configs
-    )
+    return _parser(highlight).render(text)
 
 
 def _demote(html: str, delta: int) -> str:

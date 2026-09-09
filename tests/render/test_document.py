@@ -10,12 +10,22 @@ from obsidian2pdf.render.document import DocumentRenderer, stylesheet
 from obsidian2pdf.vault import build_attachment_index
 
 
-def _renderer(vault):
+def _renderer(vault, highlight=True):
     idx = build_attachment_index(vault.root)
     return DocumentRenderer(
         default_pipeline(),
         lambda p: NoteContext(note_path=p, vault_root=vault.root, attachments=idx),
+        highlight,
     )
+
+
+def _render_markdown(vault, text: str, highlight=True) -> str:
+    """Render one throwaway note, so a case reads as the markdown that goes
+    in and the HTML that comes out."""
+    note = vault.project / "Markdown.md"
+    note.write_text(text, encoding="utf-8")
+    tree = build_tree(note, MakeMdOrderStrategy())
+    return _renderer(vault, highlight).render(tree)
 
 
 def test_render_nodes_flat_structure_matches_tree(vault):
@@ -63,3 +73,61 @@ def test_stylesheet_injects_page_size_and_base_font():
     css = stylesheet(PRESETS["kobo-libra-colour"])
     assert "107.00mm 142.20mm" in css
     assert "8.5pt" in css
+
+
+# Obsidian parses CommonMark; classic Markdown differs in ways that quietly
+# wrecked exported notes, so each case below pins one of those differences.
+
+
+def test_list_interrupts_a_paragraph_without_a_blank_line(vault):
+    html = _render_markdown(
+        vault, "Clauses:\n- distinct rows\n- sorted rows\n"
+    )
+    assert "<ul>" in html
+    assert "<li>distinct rows</li>" in html
+    assert "- distinct rows" not in html  # not swallowed into the paragraph
+
+
+def test_table_interrupts_a_paragraph_without_a_blank_line(vault):
+    html = _render_markdown(vault, "Types:\n| a | b |\n|---|---|\n| 1 | 2 |\n")
+    assert "<table>" in html
+    assert "<th>a</th>" in html
+
+
+def test_two_space_indent_nests_the_sublist(vault):
+    html = _render_markdown(vault, "- outer\n  - inner\n- second\n")
+    assert html.count("<ul>") == 2
+    assert "<ul>\n<li>inner</li>\n</ul>" in html
+
+
+def test_single_newline_is_a_line_break(vault):
+    # Obsidian's default (Strict line breaks off) breaks the line; classic
+    # Markdown joins the two into one.
+    html = _render_markdown(vault, "Line one\nLine two\n")
+    assert "Line one<br />\nLine two" in html
+
+
+def test_transform_html_survives_rendering(vault):
+    html = _render_markdown(vault, "See [[Zeta|the other note]].\n")
+    assert '<span class="wikilink">the other note</span>' in html
+
+
+def test_resolved_image_uri_survives_rendering(vault):
+    html = _render_markdown(vault, "![[pic.png]]\n")
+    assert '<img src="file://' in html and "pic.png" in html
+
+
+def test_code_block_is_highlighted_inside_one_codehilite_wrapper(vault):
+    html = _render_markdown(vault, "```python\nx = 1\n```\n")
+    assert html.count('<pre class="codehilite">') == 1
+    assert "<span" in html.split('<pre class="codehilite">')[1]  # pygments
+
+
+def test_code_block_without_highlighting_keeps_the_same_wrapper(vault):
+    html = _render_markdown(vault, "```python\nx = 1\n```\n", highlight=False)
+    assert '<pre class="codehilite"><code>x = 1\n</code></pre>' in html
+
+
+def test_unknown_language_falls_back_to_escaped_text(vault):
+    html = _render_markdown(vault, "```notalanguage\n<b>x</b>\n```\n")
+    assert '<pre class="codehilite"><code>&lt;b&gt;x&lt;/b&gt;\n</code></pre>' in html

@@ -5,9 +5,9 @@ and trade-offs behind each. Ordered roughly by when they were made.
 
 ## Stack: Python + WeasyPrint over Pandoc or Puppeteer
 
-**Decision:** Markdown → HTML → PDF entirely in Python via `python-markdown`
-and WeasyPrint, rather than shelling out to Pandoc or driving headless
-Chrome with Puppeteer.
+**Decision:** Markdown → HTML → PDF entirely in Python via `markdown-it-py`
+(originally `python-markdown`, see below) and WeasyPrint, rather than
+shelling out to Pandoc or driving headless Chrome with Puppeteer.
 
 **Why:** No external binaries to install (Pandoc needs a LaTeX toolchain
 for good PDF output; Puppeteer downloads a full Chromium). Full CSS control
@@ -297,3 +297,62 @@ output file (`pypdf`, `zipfile`). These are fast and fully local (no
 network), and mocking them would test nothing — the page-geometry bug and
 the nav-duplication bug were both the kind of thing only a real render/pack
 step exposes.
+
+## Production bug: exported lists collapsed into paragraphs
+
+**Symptom:** In an exported note, a bullet list written directly under its
+intro line came out as one run-on paragraph with literal `-` markers:
+
+```
+The SELECT statement has the following clauses: - Select distinct rows
+using DISTINCT operator. - Sort rows using ORDER BY clause. - Filter rows…
+```
+
+Sub-bullets indented two spaces lost their nesting, and hand-broken lines
+were joined into one.
+
+**Cause:** All three are classic-Markdown rules that `python-markdown`
+implements faithfully and Obsidian, being CommonMark, does not share:
+
+- a list or table may not interrupt a paragraph — it needs a blank line
+  before it, otherwise its lines are paragraph continuation text;
+- nesting requires a four-space indent, but Obsidian indents by two;
+- a single newline is a space, while Obsidian's default (Strict line
+  breaks off) renders it as a line break.
+
+A fourth, subtler one showed up while verifying the fix: a trailing `-`
+line — common at the end of a hand-written list — is a setext heading
+underline in classic Markdown, so notes ending that way produced bogus
+`<h2>-</h2>` headings that also polluted the PDF's bookmark outline.
+
+**Fix:** Swapped the parser for `markdown-it-py` (CommonMark, the same
+grammar Obsidian parses) with `breaks=True` to match Obsidian's default
+line-break behavior.
+
+**Why not patch it in the preprocess Pipeline:** Two transforms could have
+inserted the missing blank lines and re-indented nested lists, keeping
+`python-markdown`. But every such transform is a hand-rolled
+reimplementation of a rule CommonMark already specifies, and the list of
+divergences was still growing while investigating (escapes like `\|`
+leaking a literal backslash, ordered lists renumbered from their first
+surviving item, headings absorbed into a preceding table). Matching the
+parser to the source format fixes that whole class at once.
+
+**Cost of the swap:** small, because the coupling was small — one
+`_markdown_to_html` function and four `.codehilite` CSS rules. Two
+gotchas, both covered by tests now:
+
+- `markdown-it` rejects `file://` URLs as unsafe by default, which silently
+  dropped *every* embedded image (the transforms resolve local images to
+  `file://` URIs). `_parser()` allows that one scheme back in.
+- Its fence renderer only skips its own `<pre><code>` wrapper if the
+  highlight hook's output starts with `<pre`, and Pygments' `HtmlFormatter`
+  emits `<div class="codehilite"><pre>`, which double-wrapped every code
+  block. The fence rule is overridden outright instead, so fenced and
+  indented blocks, highlighted or not, all render as
+  `<pre class="codehilite"><code>` and one CSS rule covers them.
+
+**Verified** by re-exporting the same folder with the old and new code and
+diffing: identical page count, no text lost, literal `-` list markers 89 →
+0, `<ul>` 62 → 112, `<li>` 215 → 353, 20 bogus setext headings gone, and
+three real headings recovered from being swallowed into a table row.
