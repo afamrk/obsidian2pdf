@@ -16,7 +16,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "markdown>=3.5",
+    "markdown-it-py>=3.0",
     "weasyprint>=60",
     "pygments>=2.17",
     "curl_cffi>=0.7",

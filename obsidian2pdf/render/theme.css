@@ -23,8 +23,14 @@ h4 { bookmark-level: 4; } h5 { bookmark-level: 5; } h6 { bookmark-level: 6; }
 img { max-width: 100%; }
 
 pre, code { font-family: "DejaVu Sans Mono", monospace; font-size: 0.85em; }
-.codehilite { background: #f6f6f6; border-radius: 3px; padding: 0.4em 0.5em; }
-.codehilite pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+.codehilite {
+  background: #f6f6f6;
+  border-radius: 3px;
+  padding: 0.4em 0.5em;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0;
+}
 code { background: #f0f0f0; padding: 0 0.15em; }
 .codehilite code { background: transparent; padding: 0; }
 
