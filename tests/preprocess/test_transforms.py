@@ -94,6 +94,26 @@ def test_wikilink_to_text_uses_target_without_alias(vault):
     assert out == '<span class="wikilink">Zeta</span>'
 
 
+def test_wikilink_to_text_uses_heading_for_same_note_link(vault):
+    out = WikilinkToText().apply("[[#Exported vs Unexported Fields]]", _ctx(vault))
+    assert out == '<span class="wikilink">Exported vs Unexported Fields</span>'
+
+
+def test_wikilink_to_text_joins_target_and_section(vault):
+    out = WikilinkToText().apply("[[Zeta#Structs]]", _ctx(vault))
+    assert out == '<span class="wikilink">Zeta &gt; Structs</span>'
+
+
+def test_wikilink_to_text_keeps_block_reference(vault):
+    out = WikilinkToText().apply("[[Zeta#^abc123]]", _ctx(vault))
+    assert out == '<span class="wikilink">Zeta &gt; ^abc123</span>'
+
+
+def test_wikilink_to_text_alias_wins_over_section(vault):
+    out = WikilinkToText().apply("[[Zeta#Structs|the other note]]", _ctx(vault))
+    assert out == '<span class="wikilink">the other note</span>'
+
+
 def test_local_md_image_resolver_resolves_relative_path(vault):
     ctx = _ctx(vault)
     out = LocalMdImageResolver().apply("![alt](attachments/pic.png)", ctx)
