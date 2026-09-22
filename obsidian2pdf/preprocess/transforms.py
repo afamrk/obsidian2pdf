@@ -52,6 +52,17 @@ def _missing_embed(name: str) -> str:
     return f'<div class="missing-embed">missing image: {html.escape(name)}</div>'
 
 
+def _link_label(raw: str) -> str:
+    """Obsidian's display text for [[target#section|alias]]: the alias when
+    present, else target and section joined by " > " — a same-note
+    [[#section]] link shows the section alone."""
+    target, _, alias = raw.partition("|")
+    if alias.strip():
+        return alias.strip()
+    note, _, section = target.partition("#")
+    return " > ".join(part.strip() for part in (note, section) if part.strip())
+
+
 class FrontmatterStripper:
     """Remove a leading YAML frontmatter block."""
 
@@ -143,9 +154,8 @@ class WikilinkToText:
 
     def apply(self, text: str, ctx: NoteContext) -> str:
         def repl(m: re.Match) -> str:
-            parts = m.group(1).split("|")
-            label = parts[-1] if len(parts) > 1 else parts[0].split("#")[0]
-            return f'<span class="wikilink">{html.escape(label.strip())}</span>'
+            label = _link_label(m.group(1))
+            return f'<span class="wikilink">{html.escape(label)}</span>'
 
         return WIKI_LINK.sub(repl, text)
 
